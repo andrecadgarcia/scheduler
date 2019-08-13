@@ -26,8 +26,8 @@ const Ripple = props => {
     }
 
     function onDrag(event) {
-        console.log(event)
-        setRippleWidth(rippleWidth + 1);
+        console.log(posX, event.nativeEvent.offsetX);
+        setRippleWidth(event.nativeEvent.offsetX);
     }
 
     return (

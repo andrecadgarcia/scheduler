@@ -19,10 +19,12 @@ const __VIEWS__ = {
 
 const Scheduler = props => {
     const [view, setView] = useState(__VIEWS__.month);
+    const [date, setDate] = useState(moment());
+
     return (
         <div>
-            <SchedulerToolbar />
-            <MonthView />
+            <SchedulerToolbar date={date} onNext={() => setDate(moment(date).add(1, "months"))} onPrevious={() => setDate(moment(date).subtract(1, "months"))} />
+            <MonthView date={date} onNext={() => setDate(moment(date).add(1, "months"))} onPrevious={() => setDate(moment(date).subtract(1, "months"))} />
         </div>
     );
 }
@@ -30,11 +32,12 @@ export default Scheduler;
 
 const SchedulerToolbar = props => {
     const { 
-        date = moment(),
+        date,
         view = __VIEWS__.month,
         views = [ __VIEWS__.day, __VIEWS__.week, __VIEWS__.month ],
         toolBarColor = "#F5F5F5",
-        labelColor = "#767676"
+        labelColor = "#767676",
+        onNext, onPrevious
     } = props;
     const styles = {
         container: {
@@ -89,9 +92,9 @@ const SchedulerToolbar = props => {
     return (
         <div style={styles.container}>
             <div style={styles.navigator}>
-                <div style={styles.navigatorArrows}> {"<"} </div>
+                <div style={styles.navigatorArrows} onClick={onPrevious}> {"<"} </div>
                 <div style={styles.navigatorCenter}> {date.format("MMM-YY")} </div>
-                <div style={styles.navigatorArrows}> {">"} </div>
+                <div style={styles.navigatorArrows} onClick={onNext}> {">"} </div>
             </div>
             <div style={styles.views}>
                 {views.map(item => <div style={view.id === item.id ? styles.viewsItemActive : styles.viewsItem}>{item.label}</div>)}

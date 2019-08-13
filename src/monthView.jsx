@@ -2,21 +2,21 @@ import React, { useState } from "react";
 import Moment from "moment";
 import { extendMoment } from 'moment-range';
 const moment = extendMoment(Moment);
-import Ripple from "./ripple";
+import Event from "./event";
+import { getCalendar } from "./util";
 
 const MonthView = props => {
     const { 
         borderColor = "#F6F6F6",
         dayColor = ["#626262", "#BFBFBF"],
-        date = moment()
+        date,
+        onNext, onPrevious
     } = props;
-
+    const [newEvent, setNewEvent] = useState(null);
+    const [hoveringDate, setHoveringDate] = useState(null);
     const startMonth = moment(date).startOf("month");
     const endMonth = moment(date).endOf("month");
-    const startCalendar = moment(startMonth).startOf("week");
-    const endCalendar = moment(endMonth).endOf("week");
-    const range = moment().range(startCalendar, endCalendar);
-    const weeks = Array.from(range.by('weeks'));
+    const weeks = getCalendar(date);
     
     const styles = {
         calendar: {
@@ -26,31 +26,96 @@ const MonthView = props => {
             borderRight: `1px solid ${borderColor}`,
         }
     }
+
+    function onDown(date) {
+        if (!newEvent) {
+            setNewEvent({
+                position: "absolute",
+                startDate: date,
+                endDate: date,
+                date: date
+            });
+            setHoveringDate(date);
+        }
+    }
+
+    function onEnter(date) {
+        if (newEvent) {
+            setNewEvent(event => {
+                const aEvent = { ...event }
+                if (date.isBefore(aEvent.date)) {
+                    aEvent.startDate = date;
+                }
+                else {
+                    aEvent.startDate = aEvent.date;
+                    aEvent.endDate = date;
+                }
+                return aEvent;
+            });
+            setHoveringDate(date);
+        }
+    }
+
+    function onLeave(date) {
+        if (newEvent) {
+        }
+    }
+
+    function onUp(date) {
+        if (newEvent) {
+            setNewEvent(null);
+            setHoveringDate(null);
+        }
+    }
+
+    function onWheel(event) {
+        if (event.nativeEvent.deltaY > 0) {
+            if (hoveringDate) {
+                onEnter(moment(hoveringDate).add(((weeks.length * 7) - (endMonth.weekday() !== 6 ? 7 : 0)), "days"));
+            }
+            onNext();
+        }
+        else {
+            if (hoveringDate) {
+                const prevWeeks = getCalendar(moment(hoveringDate).subtract(1, "month"));
+                onEnter(moment(hoveringDate).subtract(((prevWeeks.length * 7) - (startMonth.weekday() !== 0 ? 7 : 0)), "days"));
+            }
+            onPrevious();
+        }
+    }
     
     return (
         <div style={styles.calendar}>
-            <MonthToolbar borderColor={borderColor} /> 
-            {weeks.map(startWeek => {
-                const endWeek = moment(startWeek).endOf("week");
-                const range = moment().range(startWeek, endWeek);
-                const days = Array.from(range.by('days'));
-                return (
-                    <MonthRow 
-                        key={`week#${startWeek.format("WW")}`}
-                        borderColor={borderColor}
-                    >
-                        {days.map(day => {
-                            return (
-                                <MonthCell 
-                                    key={`day#${day.format("DD")}`} label={day.format("DD")} 
-                                    borderColor={borderColor}
-                                    labelColor={day.isSame(date, "month") ? dayColor[0] : dayColor[1]}
-                                />
-                            );
-                        })}
-                    </MonthRow>
-                );
-            })}
+            <MonthToolbar borderColor={borderColor} />
+            <div style={{ position: "relative" }} onWheel={onWheel}>
+                {weeks.map(startWeek => {
+                    const endWeek = moment(startWeek).endOf("week");
+                    const range = moment().range(startWeek, endWeek);
+                    const days = Array.from(range.by('days'));
+                    return (
+                        <MonthRow 
+                            key={`week#${startWeek.format("WW")}`}
+                            borderColor={borderColor}
+                        >
+                            {days.map(day => {
+                                return (
+                                    <MonthCell 
+                                        key={`day#${day.format("DD")}`} 
+                                        date={day} 
+                                        borderColor={borderColor}
+                                        labelColor={day.isSame(date, "month") ? dayColor[0] : dayColor[1]}
+                                        onMouseDown={onDown} 
+                                        onMouseUp={onUp} 
+                                        onMouseEnter={onEnter}
+                                        onMouseLeave={onLeave}
+                                        newEvent={newEvent && day.isBetween(newEvent.startDate, newEvent.endDate, "day", "[]") ? { hasNext: day.isBefore(newEvent.endDate), hasPrevious: day.isAfter(newEvent.startDate) } : null}
+                                    />
+                                );
+                            })}
+                        </MonthRow>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -99,12 +164,7 @@ const MonthRow = props => {
 }
 
 const MonthCell = props => {
-    const { label = null, borderColor, labelColor } = props;
-    const [newEvent, setNewEvent] = useState({
-        show: false,
-        positionX: 0,
-        positionY: 0
-    });
+    const { date = null, borderColor, labelColor, events = [], newEvent = null } = props;
     const styles = {
         cell: {
             position: "relative",
@@ -122,26 +182,43 @@ const MonthCell = props => {
         }
     }
 
-    function startEvent(event) {
-        setNewEvent({
-            show: true,
-            positionX: event.pageX - event.currentTarget.offsetLeft,
-            positionY: event.pageY - event.currentTarget.offsetTop
-        });
-    } 
+    function onMouseDown(event) {
+        if (props.onMouseDown) {
+            props.onMouseDown(date);
+        }
+        event.stopPropagation();
+        event.preventDefault();
+    }
 
-    function stopEvent() {
-        setNewEvent({
-            show: false,
-            positionX: 0,
-            positionY: 0
-        });
-    } 
+    function onMouseUp(event) {
+        if (props.onMouseUp) {
+            props.onMouseUp(date);
+        }
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    function onMouseEnter(event) {
+        if (props.onMouseEnter) {
+            props.onMouseEnter(date);
+        }
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    function onMouseLeave(event) {
+        if (props.onMouseLeave) {
+            props.onMouseLeave(date);
+        }
+        event.stopPropagation();
+        event.preventDefault();
+    }
 
     return (
-        <div style={styles.cell} onMouseDown={startEvent} onMouseUp={stopEvent}>
-            {label && <span style={styles.dayLabel}>{label}</span>}
-            {newEvent.show && <Ripple posX={newEvent.positionX} posY={newEvent.positionY}/>}
+        <div style={styles.cell} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+            {date && <span style={styles.dayLabel}>{date.format("DD")}</span>}
+            {newEvent && <Event {...newEvent} />}
+            {events.map(item => <Event {...item} />)}
         </div>
     );
 }

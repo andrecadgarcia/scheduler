@@ -4,7 +4,7 @@
   "description": "",
   "main": "build/index.js",
   "scripts": {
-    "start": "webpack-dev-server --config ./webpack.config.dev.js --mode development --port 3001 --hot --host 0.0.0.0",
+    "start": "webpack-dev-server --config ./webpack.config.dev.js --mode development --port 3002 --hot --host 0.0.0.0",
     "build": "webpack --mode production",
     "analyze": "source-map-explorer 'build/*.js'",
     "serve": "serve -s build"
