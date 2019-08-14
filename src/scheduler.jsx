@@ -20,11 +20,33 @@ const __VIEWS__ = {
 const Scheduler = props => {
     const [view, setView] = useState(__VIEWS__.month);
     const [date, setDate] = useState(moment());
+    const [events, setEvents] = useState([]);
+
+    function onNewEvent(event) {
+        setEvents(events => {
+            const aEvents = [ ...events];
+            aEvents.push(event);
+            return aEvents
+        });        
+    }
+
+    function onShowMore(events) {
+        console.log(events)
+    }
+
+    const sortedEvents = events.sort((a, b) => a.startDate.diff(a.endDate, 'days') - b.startDate.diff(b.endDate, 'days'));
 
     return (
         <div>
             <SchedulerToolbar date={date} onNext={() => setDate(moment(date).add(1, "months"))} onPrevious={() => setDate(moment(date).subtract(1, "months"))} />
-            <MonthView date={date} onNext={() => setDate(moment(date).add(1, "months"))} onPrevious={() => setDate(moment(date).subtract(1, "months"))} />
+            <MonthView 
+                date={date} 
+                onNext={() => setDate(moment(date).add(1, "months"))} 
+                onPrevious={() => setDate(moment(date).subtract(1, "months"))} 
+                onNewEvent={onNewEvent}
+                events={sortedEvents}
+                onShowMore={onShowMore}
+            />
         </div>
     );
 }

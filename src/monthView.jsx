@@ -10,7 +10,9 @@ const MonthView = props => {
         borderColor = "#F6F6F6",
         dayColor = ["#626262", "#BFBFBF"],
         date,
-        onNext, onPrevious
+        onNext, onPrevious, 
+        onNewEvent = null, onShowMore = null,
+        events = []
     } = props;
     const [newEvent, setNewEvent] = useState(null);
     const [hoveringDate, setHoveringDate] = useState(null);
@@ -56,13 +58,11 @@ const MonthView = props => {
         }
     }
 
-    function onLeave(date) {
-        if (newEvent) {
-        }
-    }
-
     function onUp(date) {
         if (newEvent) {
+            if (onNewEvent) {
+                onNewEvent(newEvent);
+            }
             setNewEvent(null);
             setHoveringDate(null);
         }
@@ -107,8 +107,13 @@ const MonthView = props => {
                                         onMouseDown={onDown} 
                                         onMouseUp={onUp} 
                                         onMouseEnter={onEnter}
-                                        onMouseLeave={onLeave}
                                         newEvent={newEvent && day.isBetween(newEvent.startDate, newEvent.endDate, "day", "[]") ? { hasNext: day.isBefore(newEvent.endDate), hasPrevious: day.isAfter(newEvent.startDate) } : null}
+                                        events={
+                                            events.filter(item => day.isBetween(item.startDate, item.endDate, "day", "[]")).map((item, index) => { 
+                                                return { position: index, hasNext: day.isBefore(item.endDate), hasPrevious: day.isAfter(item.startDate) };
+                                            })
+                                        }
+                                        onShowMore={onShowMore}
                                     />
                                 );
                             })}
@@ -164,14 +169,15 @@ const MonthRow = props => {
 }
 
 const MonthCell = props => {
-    const { date = null, borderColor, labelColor, events = [], newEvent = null } = props;
+    const { date = null, borderColor, labelColor, events = [], newEvent = null, onShowMore = null } = props;
     const styles = {
         cell: {
             position: "relative",
             flex: "1",
-            padding: "64px",
+            height: "128px",
             borderLeft: `1px solid ${borderColor}`,
-            cursor: "pointer"
+            cursor: "pointer",
+            overflow: "auto"
         },
         dayLabel: {
             position: "absolute",
@@ -183,6 +189,7 @@ const MonthCell = props => {
     }
 
     function onMouseDown(event) {
+        if (event.button !== 0 || (event.target && event.target.id === "showMore")) return;
         if (props.onMouseDown) {
             props.onMouseDown(date);
         }
@@ -214,11 +221,22 @@ const MonthCell = props => {
         event.preventDefault();
     }
 
+    function showMoreClicked(event) {
+        if (onShowMore) {
+            onShowMore(events);
+        }
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    
+    const showMore = events.length > 2;
+
     return (
         <div style={styles.cell} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
             {date && <span style={styles.dayLabel}>{date.format("DD")}</span>}
             {newEvent && <Event {...newEvent} />}
-            {events.map(item => <Event {...item} />)}
+            {events.slice(0, 2).map(item => <Event {...item} />)}
+            {showMore && <div id="showMore" onClick={showMoreClicked} style={{ position: "absolute", bottom: "4px", width: "100%" }}> ...Show More </div>}
         </div>
     );
 }
